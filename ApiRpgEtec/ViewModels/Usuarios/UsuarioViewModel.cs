@@ -53,6 +53,8 @@ namespace ApiRpgEtec.ViewModels.Usuarios
                 OnPropertyChanged();
             }
         }
+        private CancellationTokenSource _cancelTokenSource;
+        private bool _isCheckingLocation;
 
         public async Task AutenticarUsuario()
         {
@@ -72,6 +74,21 @@ namespace ApiRpgEtec.ViewModels.Usuarios
                     Preferences.Set("UsuarioUsername", uAutenticado.Username);
                     Preferences.Set("UsuarioPerfil", uAutenticado.Perfil);
                     Preferences.Set("UsuarioToken", uAutenticado.Token);
+
+                    //inicio da coleta de Geolocalização
+                    _isCheckingLocation = true;
+                    _cancelTokenSource = new CancellationTokenSource();
+                    GeolocationRequest request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+
+                    Location location = await Geolocation.Default.GetLocationAsync(request, _cancelTokenSource.Token);
+
+                    Usuario uLoc = new Usuario();
+                    uLoc.Id = uAutenticado.Id;
+                    uLoc.Latitude = location.Latitude;
+                    uLoc.Longitude = location.Longitude;
+
+                    UsuariosServices uServiceLoc = new UsuariosServices(uAutenticado.Token);
+                    await uServiceLoc.PutAtualizarLocalizacaoAsync(uLoc);
 
                     await Application.Current.MainPage.DisplayAlert("Informação", mensagem, "Ok");
 
@@ -103,7 +120,7 @@ namespace ApiRpgEtec.ViewModels.Usuarios
                 if (uRegistrado.Id != 0)
                 {
                     string mensagem = $"Usuário Id {uRegistrado.Id} registrado com sucesso";
-
+                    
 
                     await Application.Current.MainPage.DisplayAlert("Informação", mensagem, "Ok");
 
